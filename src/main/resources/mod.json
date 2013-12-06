@@ -1,0 +1,11 @@
+{
+  "system": true,
+  "resident": true,
+  "includes": "io.vertx~lang-js~1.0.0-SNAPSHOT",
+
+  "description":"JavaScript language implementation module for Vert.x - Uses Nashorn as the JavaScript engine",
+  "licenses": ["The Apache Software License Version 2.0"],
+  "author": "Tim Fox",
+  "keywords": ["js", "javascript", "nashorn", "language"],
+  "homepage": "https://github.com/vert-x/mod-lang-nashorn"
+}

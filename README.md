@@ -7,6 +7,8 @@ on the `lang-js` CI server.
 
 [API Documentation](https://vertx.ci.cloudbees.com/view/Javascript/job/vert.x-mod-lang-js/lastSuccessfulBuild/artifact/target/docs/index.html)
 
+This module also supports CoffeeScript.
+
 * Important note. The Nashorn engine is an intrinsic part of the Java 8 JDK implementation. In order to use this module
 you will need to be running Vert.x with JDK 1.8.0 or later *
 
@@ -17,4 +19,5 @@ By default, vert.x runs Javascript with Rhino. Change this by creating a
 
     nashorn=io.vertx~lang-nashorn~0.1-SNAPSHOT:org.vertx.java.platform.impl.NashornVerticleFactory
     .js=nashorn
+    .coffee=nashorn
 

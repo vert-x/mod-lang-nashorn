@@ -117,14 +117,7 @@ public class VertxScriptContext {
     }
   }
 
-  private void readAll(StringBuilder builder, BufferedReader reader) throws IOException {
-    for (String line = reader.readLine(); line != null; line = reader.readLine()) {
-      builder.append(line).append("\n");
-    }
-  }
-
   public Object executeScript() {
-    System.out.println("Executing script " + scriptName);
     try (InputStream is = mcl.getResourceAsStream(scriptName)) {
       if (is == null) {
         throw new FileNotFoundException("Cannot find script: " + scriptName);
@@ -141,10 +134,10 @@ public class VertxScriptContext {
       }
       if (scriptName.endsWith(".coffee")) {
         StringBuilder builder = new StringBuilder();
-        readAll(builder, reader);
+        NashornVerticleFactory.readAll(builder, reader);
         sWrap.append(factory.coffeeScriptToJS(builder.toString()));
       } else {
-        readAll(sWrap, reader);
+        NashornVerticleFactory.readAll(sWrap, reader);
       }
       if (module) {
         sWrap.append("__jscriptcontext.setModuleExports(module.exports)");

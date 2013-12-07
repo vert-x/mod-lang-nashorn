@@ -24,10 +24,7 @@ import org.vertx.java.platform.Verticle;
 import org.vertx.java.platform.VerticleFactory;
 
 import javax.script.*;
-import java.io.BufferedReader;
-import java.io.FileNotFoundException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -77,11 +74,9 @@ public class NashornVerticleFactory implements VerticleFactory {
         throw new FileNotFoundException("Cannot find coffee-script.js");
       }
       BufferedReader reader = new BufferedReader(new InputStreamReader(is));
-      StringBuilder sWrap = new StringBuilder();
-      for (String line = reader.readLine(); line != null; line = reader.readLine()) {
-        sWrap.append(line).append("\n");
-      }
-      engine.eval(sWrap.toString(), coffeeScriptCompilerContext);
+      StringBuilder builder = new StringBuilder();
+      readAll(builder, reader);
+      engine.eval(builder.toString(), coffeeScriptCompilerContext);
     } catch (Exception e) {
       throw new PlatformManagerException(e);
     }
@@ -97,6 +92,12 @@ public class NashornVerticleFactory implements VerticleFactory {
       return res == null ? null : res.toString();
     } catch (Exception e) {
       throw new PlatformManagerException(e);
+    }
+  }
+
+  static void readAll(StringBuilder builder, BufferedReader reader) throws IOException {
+    for (String line = reader.readLine(); line != null; line = reader.readLine()) {
+      builder.append(line).append("\n");
     }
   }
 

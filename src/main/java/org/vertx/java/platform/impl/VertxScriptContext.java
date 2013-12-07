@@ -35,6 +35,7 @@ public class VertxScriptContext {
   private final Vertx vertx;
   private final Container container;
   private final ScriptEngine engine;
+  private final NashornVerticleFactory factory;
   private final boolean module;
   private final Map<String, Object> cachedRequires;
   private final boolean inheritContext;
@@ -42,13 +43,13 @@ public class VertxScriptContext {
   private Object moduleExports;
 
   public VertxScriptContext(String scriptName, ClassLoader mcl, Vertx vertx, Container container, ScriptEngine engine,
-                            Map<String, Object> cachedRequires) {
-    this(null, scriptName, false, mcl, vertx, container, engine, cachedRequires, false);
+                            NashornVerticleFactory factory, Map<String, Object> cachedRequires) {
+    this(null, scriptName, false, mcl, vertx, container, engine, factory, cachedRequires, false);
     createContext();
   }
 
   private VertxScriptContext(ScriptContext ctx, String scriptName, boolean module, ClassLoader mcl, Vertx vertx,
-                             Container container, ScriptEngine engine,
+                             Container container, ScriptEngine engine, NashornVerticleFactory factory,
                              Map<String, Object> cachedRequires, boolean inheritContext) {
     this.ctx = ctx;
     this.scriptName = scriptName;
@@ -57,6 +58,7 @@ public class VertxScriptContext {
     this.vertx = vertx;
     this.container = container;
     this.engine = engine;
+    this.factory = factory;
     this.cachedRequires = cachedRequires;
     this.inheritContext = inheritContext;
   }
@@ -71,13 +73,14 @@ public class VertxScriptContext {
   }
 
   private VertxScriptContext createModuleContext(String moduleScript) {
-    VertxScriptContext ctx =  new VertxScriptContext(null, moduleScript, true, mcl, vertx, container, engine, cachedRequires, false);
+    VertxScriptContext ctx =  new VertxScriptContext(null, moduleScript, true, mcl, vertx, container, engine,
+                                                     factory, cachedRequires, false);
     ctx.createContext();
     return ctx;
   }
 
   private VertxScriptContext createLoadContext(String scriptName) {
-    return new VertxScriptContext(ctx, scriptName, false, mcl, vertx, container, engine, cachedRequires, true);
+    return new VertxScriptContext(ctx, scriptName, false, mcl, vertx, container, engine, factory, cachedRequires, true);
   }
 
   public Object require(String moduleName) {
@@ -114,7 +117,14 @@ public class VertxScriptContext {
     }
   }
 
+  private void readAll(StringBuilder builder, BufferedReader reader) throws IOException {
+    for (String line = reader.readLine(); line != null; line = reader.readLine()) {
+      builder.append(line).append("\n");
+    }
+  }
+
   public Object executeScript() {
+    System.out.println("Executing script " + scriptName);
     try (InputStream is = mcl.getResourceAsStream(scriptName)) {
       if (is == null) {
         throw new FileNotFoundException("Cannot find script: " + scriptName);
@@ -129,14 +139,17 @@ public class VertxScriptContext {
         // commonjs module
         sWrap.append("module = {}; module.exports = {};\n");
       }
-      for (String line = reader.readLine(); line != null; line = reader.readLine()) {
-        sWrap.append(line).append("\n");
+      if (scriptName.endsWith(".coffee")) {
+        StringBuilder builder = new StringBuilder();
+        readAll(builder, reader);
+        sWrap.append(factory.coffeeScriptToJS(builder.toString()));
+      } else {
+        readAll(sWrap, reader);
       }
       if (module) {
         sWrap.append("__jscriptcontext.setModuleExports(module.exports)");
       }
-      Object res = engine.eval(sWrap.toString(), ctx);
-      return res;
+      return engine.eval(sWrap.toString(), ctx);
     } catch (IOException e) {
       throw new PlatformManagerException(e);
     } catch (ScriptException e) {

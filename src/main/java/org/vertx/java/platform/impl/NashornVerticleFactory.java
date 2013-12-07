@@ -24,6 +24,10 @@ import org.vertx.java.platform.Verticle;
 import org.vertx.java.platform.VerticleFactory;
 
 import javax.script.*;
+import java.io.BufferedReader;
+import java.io.FileNotFoundException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -36,6 +40,7 @@ public class NashornVerticleFactory implements VerticleFactory {
   private Vertx vertx;
   private ClassLoader cl;
   private ScriptEngine engine;
+  private ScriptContext coffeeScriptCompilerContext;
 
   @Override
   public void init(Vertx vertx, Container container, ClassLoader classloader) {
@@ -63,6 +68,38 @@ public class NashornVerticleFactory implements VerticleFactory {
   public void close() {
   }
 
+  private void createCoffeeScriptCompilerContext() {
+    coffeeScriptCompilerContext = new SimpleScriptContext();
+    Bindings bindings = engine.createBindings();
+    coffeeScriptCompilerContext.setBindings(bindings, ScriptContext.ENGINE_SCOPE);
+    try (InputStream is = cl.getResourceAsStream("coffee-script.js")) {
+      if (is == null) {
+        throw new FileNotFoundException("Cannot find coffee-script.js");
+      }
+      BufferedReader reader = new BufferedReader(new InputStreamReader(is));
+      StringBuilder sWrap = new StringBuilder();
+      for (String line = reader.readLine(); line != null; line = reader.readLine()) {
+        sWrap.append(line).append("\n");
+      }
+      engine.eval(sWrap.toString(), coffeeScriptCompilerContext);
+    } catch (Exception e) {
+      throw new PlatformManagerException(e);
+    }
+  }
+
+  public synchronized  String coffeeScriptToJS(String jsSource) {
+    if (coffeeScriptCompilerContext == null) {
+      createCoffeeScriptCompilerContext();
+    }
+    try {
+      coffeeScriptCompilerContext.getBindings(ScriptContext.ENGINE_SCOPE).put("coffeeScriptSource", jsSource);
+      Object res = engine.eval("CoffeeScript.compile(coffeeScriptSource);", coffeeScriptCompilerContext);
+      return res == null ? null : res.toString();
+    } catch (Exception e) {
+      throw new PlatformManagerException(e);
+    }
+  }
+
   private class NashornVerticle extends Verticle {
 
     private final Map<String, Object> cachedRequires = new HashMap<>();
@@ -70,7 +107,7 @@ public class NashornVerticleFactory implements VerticleFactory {
 
     public NashornVerticle(String scriptName) {
       this.scriptContext = new VertxScriptContext(scriptName, cl, NashornVerticleFactory.this.vertx,
-          NashornVerticleFactory.this.container, engine, cachedRequires);
+          NashornVerticleFactory.this.container, engine, NashornVerticleFactory.this, cachedRequires);
     }
 
     @Override

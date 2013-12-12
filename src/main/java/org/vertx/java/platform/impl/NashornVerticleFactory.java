@@ -44,8 +44,8 @@ public class NashornVerticleFactory implements VerticleFactory {
     this.container = container;
     this.vertx = vertx;
     this.cl = classloader;
-    ScriptEngineManager factory = new ScriptEngineManager();
-    this.engine = factory.getEngineByName("nashorn");
+    ScriptEngineManager mgr = new ScriptEngineManager();
+    this.engine = mgr.getEngineByName("nashorn");
     if (engine == null) {
       throw new PlatformManagerException("Nashorn engine not found, probably you are not using Java 8 or later");
     }
@@ -82,7 +82,7 @@ public class NashornVerticleFactory implements VerticleFactory {
     }
   }
 
-  public synchronized  String coffeeScriptToJS(String jsSource) {
+  public synchronized String coffeeScriptToJS(String jsSource) {
     if (coffeeScriptCompilerContext == null) {
       createCoffeeScriptCompilerContext();
     }
@@ -101,19 +101,21 @@ public class NashornVerticleFactory implements VerticleFactory {
     }
   }
 
-  private class NashornVerticle extends Verticle {
+  public class NashornVerticle extends Verticle {
 
     private final Map<String, Object> cachedRequires = new HashMap<>();
-    private final VertxScriptContext scriptContext;
+    private final VertxRequire scriptContext;
+    private final String scriptName;
 
     public NashornVerticle(String scriptName) {
-      this.scriptContext = new VertxScriptContext(scriptName, cl, NashornVerticleFactory.this.vertx,
+      this.scriptContext = new VertxRequire(cl, NashornVerticleFactory.this.vertx,
           NashornVerticleFactory.this.container, engine, NashornVerticleFactory.this, cachedRequires);
+      this.scriptName = scriptName;
     }
 
     @Override
     public void start() {
-      scriptContext.executeScript();
+      scriptContext.require(scriptName);
     }
 
     @Override

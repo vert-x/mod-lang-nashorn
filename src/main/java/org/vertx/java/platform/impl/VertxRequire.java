@@ -17,16 +17,16 @@
 
 package org.vertx.java.platform.impl;
 
-import org.vertx.java.core.Vertx;
-import org.vertx.java.platform.Container;
-import org.vertx.java.platform.PlatformManagerException;
-
-import javax.script.*;
 import java.io.*;
+import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.Map;
+import javax.script.*;
+import org.vertx.java.core.Vertx;
+import org.vertx.java.platform.Container;
+import org.vertx.java.platform.PlatformManagerException;
 
 /**
  * Implementation of CommonJS require()
@@ -42,25 +42,27 @@ public class VertxRequire {
   private final ScriptEngine engine;
   private final NashornVerticleFactory factory;
   private final Map<String, Object> cachedRequires;
-  private ScriptContext ctx;
+  private final ScriptContext ctx;
   private Object moduleExports;
   private Runnable vertxStop;
   private Module module;
 
   private static final String GLOBAL_FUNCTIONS =
       "function require(moduleName) { return __jscriptcontext.require(moduleName); }\n";
-  private static final String MODULE_HEADER =
+  
+  public static final String MODULE_HEADER =
       "(function(module) {\n" +
       "  \"use strict\";\n";
-  private static final String MODULE_FOOTER =
+  
+  public static final String MODULE_FOOTER =
       "__jscriptcontext.setModuleExports(module.exports);\n" +
-          "if (typeof vertxStop === 'function') {\n" +
-          "  __jscriptcontext.setVertxStop(vertxStop);\n" +
-          "}\n" +
-          "})({ id: __jscriptcontext.getModule().getId(),\n" +
-          "    exports: {},\n" +
-          "    uri: __jscriptcontext.getModule().getUri()\n" +
-          "});";
+      "if (typeof vertxStop === 'function') {\n" +
+      "  __jscriptcontext.setVertxStop(vertxStop);\n" +
+      "}\n" +
+            "})({ id: __jscriptcontext.getModule().getId(),\n" +
+            "    exports: {},\n" +
+            "    uri: __jscriptcontext.getModule().getUri()\n" +
+            "});";
 
   public VertxRequire(ClassLoader mcl, Vertx vertx, Container container, ScriptEngine engine,
                       NashornVerticleFactory factory, Map<String, Object> cachedRequires) {
@@ -78,7 +80,7 @@ public class VertxRequire {
   }
 
   public Object require(String moduleName) {
-    if (!moduleName.endsWith(".js")) {
+    if (!moduleName.endsWith(".js") && !moduleName.endsWith(".coffee")) {
       moduleName += ".js";
     }
     Object res = cachedRequires.get(moduleName);
@@ -116,7 +118,6 @@ public class VertxRequire {
     try {
       return engine.eval(script, ctx);
     } catch (ScriptException e) {
-      e.printStackTrace();
       // We need to set the correct filename
       String newMessage = e.getMessage().replace("<eval>", scriptName);
       ScriptException corrected = new ScriptException(newMessage, scriptName, e.getLineNumber(), e.getColumnNumber());
@@ -134,27 +135,34 @@ public class VertxRequire {
     try {
       uri = url.toURI();
     } catch (URISyntaxException e) {
-      // should never happen
       throw new PlatformManagerException(e);
     }
+    
     module = new Module(moduleName, uri.toString());
-    try (InputStream is = url.openStream()) {
-      BufferedReader reader = new BufferedReader(new InputStreamReader(is));
-      StringBuilder builder = new StringBuilder();
-      builder.append(MODULE_HEADER);
-      if (moduleName.endsWith(".coffee")) {
-        StringBuilder builder2 = new StringBuilder();
-        NashornVerticleFactory.readAll(builder2, reader);
-        builder.append(factory.coffeeScriptToJS(builder2.toString()));
-      } else {
-        NashornVerticleFactory.readAll(builder, reader);
+    StringBuilder script = new StringBuilder();
+
+    if (moduleName.endsWith(".coffee")) {
+      try (InputStream is = url.openStream()) {
+       BufferedReader reader = new BufferedReader(new InputStreamReader(is));
+        StringBuilder coffeeScript = new StringBuilder();
+        NashornVerticleFactory.readAll(coffeeScript, reader);
+        script.append(MODULE_HEADER)
+                .append(factory.coffeeScriptToJS(coffeeScript.toString()))
+                .append(MODULE_FOOTER);
+      } catch (IOException e) {
+        throw new PlatformManagerException(e);
       }
-      builder.append(MODULE_FOOTER);
-      return executeScript(builder.toString(), moduleName);
-    } catch (IOException e) {
-      e.printStackTrace();
-      throw new PlatformManagerException(e);
+    } else {
+      try {
+        URL wrappedUrl = new URL(null, url.toExternalForm(), new ModuleWrapper());
+        ctx.getBindings(ScriptContext.ENGINE_SCOPE).put("__filename", wrappedUrl);
+        script.append("load(__filename)");
+      } catch (MalformedURLException e) {
+        throw new PlatformManagerException(e);
+      }
     }
+    
+    return executeScript(script.toString(), moduleName);
   }
 
 }

@@ -57,7 +57,7 @@ public class VertxRequire {
           "if (typeof vertxStop === 'function') {\n" +
           "  __jscriptcontext.setVertxStop(vertxStop);\n" +
           "}\n" +
-          "})({ id: __jscriptcontext.getModule().getId(),\n" +
+          "})(this, { id: __jscriptcontext.getModule().getId(),\n" +
           "    exports: {},\n" +
           "    uri: __jscriptcontext.getModule().getUri()\n" +
           "});";

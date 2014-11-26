@@ -78,7 +78,7 @@ public class VertxRequire {
   }
 
   public Object require(String moduleName) {
-    if (!moduleName.endsWith(".js")) {
+    if (!moduleName.endsWith(".js") && !moduleName.endsWith(".coffee")) {
       moduleName += ".js";
     }
     Object res = cachedRequires.get(moduleName);

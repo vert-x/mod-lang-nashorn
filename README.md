@@ -1,4 +1,6 @@
-# Javascript on Vert.x with Nashorn
+# Vert.x 2.x is **deprecated** - use instead https://github.com/vert-x3/vertx-lang-js
+
+## Javascript on Vert.x with Nashorn
 
 This module uses the Nashorn JavaScript engine to power Vert.x JavaScript verticles
 This language module uses the generic vert.x Javascript API in [mod-lang-js](https://github.com/vert-x/mod-lang-js).
@@ -12,7 +14,7 @@ This module also supports CoffeeScript.
 * Important note. The Nashorn engine is an intrinsic part of the Java 8 JDK implementation. In order to use this module
 you will need to be running Vert.x with JDK 1.8.0 or later *
 
-## Usage
+### Usage
 
 By default, vert.x runs Javascript with Rhino. Change this by creating a
 `langs.properties` file at the root of your project that looks something like this.
